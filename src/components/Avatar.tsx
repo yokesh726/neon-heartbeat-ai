@@ -1,51 +1,75 @@
 import { motion } from "framer-motion";
-import { Smile, Frown, Heart, Zap, Coffee } from "lucide-react";
+import { useState, useEffect } from "react";
+import Avatar3D from "./Avatar3D";
+import AvatarCustomizer from "./AvatarCustomizer";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AvatarProps {
   mood?: string;
   isSpeaking?: boolean;
 }
 
-const moodEmojis = {
-  happy: { icon: Smile, color: "text-yellow-400", glow: "shadow-yellow-400/50" },
-  sad: { icon: Frown, color: "text-blue-400", glow: "shadow-blue-400/50" },
-  excited: { icon: Zap, color: "text-accent", glow: "shadow-accent/50" },
-  calm: { icon: Heart, color: "text-secondary", glow: "shadow-secondary/50" },
-  neutral: { icon: Coffee, color: "text-primary", glow: "shadow-primary/50" },
-};
+interface AvatarCustomization {
+  skinTone: string;
+  eyeColor: string;
+  hairStyle: string;
+  hairColor: string;
+  clothingColor: string;
+}
 
 const Avatar = ({ mood = "neutral", isSpeaking = false }: AvatarProps) => {
-  const currentMood = moodEmojis[mood as keyof typeof moodEmojis] || moodEmojis.neutral;
-  const Icon = currentMood.icon;
+  const [customization, setCustomization] = useState<AvatarCustomization | undefined>();
+
+  useEffect(() => {
+    loadCustomization();
+  }, []);
+
+  const loadCustomization = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("avatar_customization")
+        .eq("id", user.id)
+        .single();
+
+      if (error) throw error;
+      if (data?.avatar_customization && typeof data.avatar_customization === 'object') {
+        setCustomization(data.avatar_customization as unknown as AvatarCustomization);
+      }
+    } catch (error) {
+      console.error("Error loading customization:", error);
+    }
+  };
+
+  const handleCustomizationSave = (newCustomization: AvatarCustomization) => {
+    setCustomization(newCustomization);
+  };
 
   return (
     <div className="flex flex-col items-center gap-4">
       <motion.div
-        className="relative"
+        className="relative w-full"
         animate={{
-          scale: isSpeaking ? [1, 1.05, 1] : 1,
+          scale: isSpeaking ? [1, 1.02, 1] : 1,
         }}
         transition={{
           duration: 0.5,
           repeat: isSpeaking ? Infinity : 0,
         }}
       >
-        <div className={`w-48 h-48 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 backdrop-blur-lg border-2 border-primary/30 flex items-center justify-center ${currentMood.glow} shadow-2xl`}>
-          <motion.div
-            animate={{
-              rotate: isSpeaking ? [0, 5, -5, 0] : 0,
-            }}
-            transition={{
-              duration: 0.5,
-              repeat: isSpeaking ? Infinity : 0,
-            }}
-          >
-            <Icon className={`w-24 h-24 ${currentMood.color}`} />
-          </motion.div>
+        <div className="w-full h-64 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 backdrop-blur-lg border-2 border-primary/30 shadow-2xl overflow-hidden">
+          <Avatar3D 
+            mood={mood} 
+            isSpeaking={isSpeaking}
+            customization={customization}
+          />
         </div>
         
         {/* Glow effect */}
-        <div className={`absolute inset-0 rounded-full bg-primary/20 blur-2xl -z-10 animate-glow-pulse`} />
+        <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-2xl -z-10 animate-glow-pulse" />
         
         {/* Speaking indicator */}
         {isSpeaking && (
@@ -72,10 +96,14 @@ const Avatar = ({ mood = "neutral", isSpeaking = false }: AvatarProps) => {
         )}
       </motion.div>
 
-      <div className="text-center">
+      <div className="text-center space-y-3 w-full">
         <p className="text-sm text-muted-foreground">
-          Feeling <span className={`font-semibold ${currentMood.color}`}>{mood}</span>
+          Feeling <span className="font-semibold text-primary">{mood}</span>
         </p>
+        <AvatarCustomizer 
+          currentCustomization={customization}
+          onSave={handleCustomizationSave}
+        />
       </div>
     </div>
   );
