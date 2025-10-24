@@ -1,28 +1,69 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AvatarCustomization() {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     // Listen for Ready Player Me avatar creation events
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = async (event: MessageEvent) => {
       if (event.data?.source === 'readyplayerme') {
         const { eventName, data } = event.data;
         
         if (eventName === 'v1.avatar.exported') {
           console.log('Avatar created successfully:', data.url);
-          // TODO: Save avatar URL to user profile
-          // For now, just log it
+          setIsSaving(true);
+          
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+              toast({
+                title: "Error",
+                description: "You must be logged in to save avatar",
+                variant: "destructive",
+              });
+              return;
+            }
+
+            const { error } = await supabase
+              .from("profiles")
+              .update({ avatar_glb_url: data.url })
+              .eq("id", user.id);
+
+            if (error) throw error;
+
+            toast({
+              title: "Avatar saved successfully! ✅",
+              description: "Your new avatar is ready to use",
+            });
+            
+            // Navigate back to dashboard after 1.5 seconds
+            setTimeout(() => {
+              navigate("/");
+            }, 1500);
+          } catch (error) {
+            console.error("Error saving avatar:", error);
+            toast({
+              title: "Error",
+              description: "Failed to save avatar",
+              variant: "destructive",
+            });
+          } finally {
+            setIsSaving(false);
+          }
         }
       }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [navigate, toast]);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -48,9 +89,17 @@ export default function AvatarCustomization() {
         </div>
 
         {/* Ready Player Me Builder */}
-        <div className="rounded-[20px] overflow-hidden border-2 border-primary/20 bg-card shadow-lg shadow-primary/10">
+        <div className="rounded-[20px] overflow-hidden border-2 border-primary/20 bg-card shadow-lg shadow-primary/10 relative">
+          {isSaving && (
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+              <div className="text-center space-y-2">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+                <p className="text-primary font-semibold">Saving your avatar...</p>
+              </div>
+            </div>
+          )}
           <iframe
-            src="https://moodmoji.readyplayer.me/avatar?frameApi"
+            src="https://moodmoji.readyplayer.me/avatar?frameApi&appId=68fb13e6d8c679c1c70cb3df"
             allow="camera *; microphone *; clipboard-write"
             style={{
               width: '100%',

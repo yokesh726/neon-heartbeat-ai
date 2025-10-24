@@ -19,6 +19,7 @@ interface AvatarCustomization {
 
 const Avatar = ({ mood = "neutral", isSpeaking = false }: AvatarProps) => {
   const [customization, setCustomization] = useState<AvatarCustomization | undefined>();
+  const [glbUrl, setGlbUrl] = useState<string | null>(null);
 
   useEffect(() => {
     loadCustomization();
@@ -31,11 +32,18 @@ const Avatar = ({ mood = "neutral", isSpeaking = false }: AvatarProps) => {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("avatar_customization")
+        .select("avatar_customization, avatar_glb_url")
         .eq("id", user.id)
         .single();
 
       if (error) throw error;
+      
+      // Load Ready Player Me avatar if available
+      if (data?.avatar_glb_url) {
+        setGlbUrl(data.avatar_glb_url);
+      }
+      
+      // Load custom avatar settings as fallback
       if (data?.avatar_customization && typeof data.avatar_customization === 'object') {
         setCustomization(data.avatar_customization as unknown as AvatarCustomization);
       }
@@ -65,6 +73,7 @@ const Avatar = ({ mood = "neutral", isSpeaking = false }: AvatarProps) => {
             mood={mood} 
             isSpeaking={isSpeaking}
             customization={customization}
+            glbUrl={glbUrl}
           />
         </div>
         

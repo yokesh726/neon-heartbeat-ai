@@ -1,6 +1,6 @@
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Sphere, Box, Cylinder } from "@react-three/drei";
+import { Sphere, Box, Cylinder, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 interface AvatarCustomization {
@@ -15,6 +15,35 @@ interface Avatar3DProps {
   mood?: string;
   isSpeaking?: boolean;
   customization?: AvatarCustomization;
+  glbUrl?: string | null;
+}
+
+// Ready Player Me Avatar Component
+function ReadyPlayerMeAvatar({ url, mood, isSpeaking }: { url: string; mood: string; isSpeaking: boolean }) {
+  const { scene } = useGLTF(url);
+  const avatarRef = useRef<THREE.Group>(null);
+
+  useEffect(() => {
+    if (avatarRef.current) {
+      // Apply mood-based animations to the loaded model
+      const rotationY = mood === "excited" ? Math.sin(Date.now() * 0.003) * 0.1 : 0;
+      avatarRef.current.rotation.y = rotationY;
+      
+      // Speaking animation
+      if (isSpeaking) {
+        avatarRef.current.position.y = Math.sin(Date.now() * 0.01) * 0.02;
+      }
+    }
+  });
+
+  return (
+    <primitive 
+      ref={avatarRef}
+      object={scene} 
+      scale={2} 
+      position={[0, -1.5, 0]} 
+    />
+  );
 }
 
 const defaultCustomization: AvatarCustomization = {
@@ -167,10 +196,32 @@ function AvatarBody({ customization }: { customization: AvatarCustomization }) {
   );
 }
 
-export default function Avatar3D({ 
+function AvatarCharacter({ 
   mood = "neutral", 
   isSpeaking = false,
   customization
+}: { 
+  mood: string; 
+  isSpeaking: boolean;
+  customization: AvatarCustomization;
+}) {
+  return (
+    <>
+      <AvatarHead 
+        mood={mood} 
+        isSpeaking={isSpeaking}
+        customization={customization}
+      />
+      <AvatarBody customization={customization} />
+    </>
+  );
+}
+
+export default function Avatar3D({ 
+  mood = "neutral", 
+  isSpeaking = false,
+  customization,
+  glbUrl
 }: Avatar3DProps) {
   const finalCustomization = { ...defaultCustomization, ...customization };
 
@@ -182,12 +233,19 @@ export default function Avatar3D({
         <pointLight position={[-10, -10, -10]} intensity={0.5} color="#4fd1c5" />
         <pointLight position={[0, 0, 5]} intensity={0.8} color="#f687b3" />
         
-        <AvatarHead 
-          mood={mood} 
-          isSpeaking={isSpeaking}
-          customization={finalCustomization}
-        />
-        <AvatarBody customization={finalCustomization} />
+        <Suspense fallback={null}>
+          {glbUrl ? (
+            <ReadyPlayerMeAvatar url={glbUrl} mood={mood} isSpeaking={isSpeaking} />
+          ) : (
+            <AvatarCharacter 
+              mood={mood} 
+              isSpeaking={isSpeaking}
+              customization={finalCustomization}
+            />
+          )}
+        </Suspense>
+        
+        <OrbitControls enableZoom={false} enablePan={false} />
       </Canvas>
     </div>
   );
