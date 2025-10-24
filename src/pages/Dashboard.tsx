@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut, Menu } from "lucide-react";
+import { LogOut, Menu, User } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import ChatInterface from "@/components/ChatInterface";
 import MoodDashboard from "@/components/MoodDashboard";
@@ -63,14 +63,25 @@ const Dashboard = () => {
               Welcome back, {user?.email?.split("@")[0]}! 💜
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleSignOut}
-            className="border-primary/20 hover:bg-primary/10"
-          >
-            <LogOut className="w-4 h-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate("/avatar-customization")}
+              className="border-primary/20 hover:bg-primary/10"
+              title="Customize Avatar"
+            >
+              <User className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleSignOut}
+              className="border-primary/20 hover:bg-primary/10"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
         </motion.div>
 
         {/* Main Layout */}
